@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Save, FolderOpen, RotateCcw } from 'lucide-react';
 
-const FIELD_WIDTH = 600;
-const FIELD_HEIGHT = 900;
+const FIELD_WIDTH = 800;
+const FIELD_HEIGHT = 600;
 const PLAYER_RADIUS = 12;
 const BALL_RADIUS = 6;
 const BALL_SPEED_MULTIPLIER = 2.5;
@@ -10,50 +10,50 @@ const BALL_SPEED_MULTIPLIER = 2.5;
 const FORMATIONS = {
   scrum: {
     teamA: [
-      { n: 1, x: 300, y: 700 }, { n: 2, x: 270, y: 700 }, { n: 3, x: 330, y: 700 },
-      { n: 4, x: 280, y: 725 }, { n: 5, x: 320, y: 725 }, { n: 6, x: 260, y: 725 },
-      { n: 7, x: 340, y: 725 }, { n: 8, x: 300, y: 750 }, { n: 9, x: 100, y: 790 },
-      { n: 10, x: 180, y: 790 }, { n: 11, x: 260, y: 790 }, { n: 12, x: 340, y: 790 },
-      { n: 13, x: 420, y: 790 }, { n: 14, x: 500, y: 790 }, { n: 15, x: 300, y: 850 }
+      { n: 1, x: 400, y: 410 }, { n: 2, x: 360, y: 410 }, { n: 3, x: 440, y: 410 },
+      { n: 4, x: 370, y: 430 }, { n: 5, x: 430, y: 430 }, { n: 6, x: 345, y: 430 },
+      { n: 7, x: 455, y: 430 }, { n: 8, x: 400, y: 450 }, { n: 9, x: 130, y: 480 },
+      { n: 10, x: 240, y: 480 }, { n: 11, x: 345, y: 480 }, { n: 12, x: 455, y: 480 },
+      { n: 13, x: 560, y: 480 }, { n: 14, x: 670, y: 480 }, { n: 15, x: 400, y: 540 }
     ],
     teamB: [
-      { n: 1, x: 300, y: 200 }, { n: 2, x: 330, y: 200 }, { n: 3, x: 270, y: 200 },
-      { n: 4, x: 320, y: 175 }, { n: 5, x: 280, y: 175 }, { n: 6, x: 340, y: 175 },
-      { n: 7, x: 260, y: 175 }, { n: 8, x: 300, y: 150 }, { n: 9, x: 500, y: 110 },
-      { n: 10, x: 420, y: 110 }, { n: 11, x: 340, y: 110 }, { n: 12, x: 260, y: 110 },
-      { n: 13, x: 180, y: 110 }, { n: 14, x: 100, y: 110 }, { n: 15, x: 300, y: 50 }
+      { n: 1, x: 400, y: 390 }, { n: 2, x: 440, y: 390 }, { n: 3, x: 360, y: 390 },
+      { n: 4, x: 430, y: 370 }, { n: 5, x: 370, y: 370 }, { n: 6, x: 455, y: 370 },
+      { n: 7, x: 345, y: 370 }, { n: 8, x: 400, y: 350 }, { n: 9, x: 670, y: 320 },
+      { n: 10, x: 560, y: 320 }, { n: 11, x: 455, y: 320 }, { n: 12, x: 345, y: 320 },
+      { n: 13, x: 240, y: 320 }, { n: 14, x: 130, y: 320 }, { n: 15, x: 400, y: 260 }
     ]
   },
   lineout: {
     teamA: [
-      { n: 1, x: 150, y: 690 }, { n: 2, x: 50, y: 700 }, { n: 3, x: 150, y: 710 },
-      { n: 4, x: 100, y: 670 }, { n: 5, x: 100, y: 690 }, { n: 6, x: 100, y: 710 },
-      { n: 7, x: 100, y: 730 }, { n: 8, x: 100, y: 750 }, { n: 9, x: 190, y: 700 },
-      { n: 10, x: 250, y: 700 }, { n: 11, x: 310, y: 700 }, { n: 12, x: 370, y: 700 },
-      { n: 13, x: 430, y: 700 }, { n: 14, x: 490, y: 700 }, { n: 15, x: 300, y: 800 }
+      { n: 1, x: 200, y: 430 }, { n: 2, x: 80, y: 440 }, { n: 3, x: 200, y: 450 },
+      { n: 4, x: 130, y: 400 }, { n: 5, x: 130, y: 420 }, { n: 6, x: 130, y: 440 },
+      { n: 7, x: 130, y: 460 }, { n: 8, x: 130, y: 480 }, { n: 9, x: 250, y: 440 },
+      { n: 10, x: 330, y: 440 }, { n: 11, x: 410, y: 440 }, { n: 12, x: 490, y: 440 },
+      { n: 13, x: 570, y: 440 }, { n: 14, x: 650, y: 440 }, { n: 15, x: 400, y: 540 }
     ],
     teamB: [
-      { n: 1, x: 450, y: 710 }, { n: 2, x: 550, y: 700 }, { n: 3, x: 450, y: 690 },
-      { n: 4, x: 500, y: 730 }, { n: 5, x: 500, y: 710 }, { n: 6, x: 500, y: 690 },
-      { n: 7, x: 500, y: 670 }, { n: 8, x: 500, y: 650 }, { n: 9, x: 410, y: 700 },
-      { n: 10, x: 350, y: 700 }, { n: 11, x: 290, y: 700 }, { n: 12, x: 230, y: 700 },
-      { n: 13, x: 170, y: 700 }, { n: 14, x: 110, y: 700 }, { n: 15, x: 300, y: 100 }
+      { n: 1, x: 600, y: 450 }, { n: 2, x: 720, y: 440 }, { n: 3, x: 600, y: 430 },
+      { n: 4, x: 670, y: 480 }, { n: 5, x: 670, y: 460 }, { n: 6, x: 670, y: 440 },
+      { n: 7, x: 670, y: 420 }, { n: 8, x: 670, y: 400 }, { n: 9, x: 550, y: 440 },
+      { n: 10, x: 470, y: 440 }, { n: 11, x: 390, y: 440 }, { n: 12, x: 310, y: 440 },
+      { n: 13, x: 230, y: 440 }, { n: 14, x: 150, y: 440 }, { n: 15, x: 400, y: 260 }
     ]
   },
   freePlay: {
     teamA: [
-      { n: 1, x: 280, y: 760 }, { n: 2, x: 320, y: 760 }, { n: 3, x: 300, y: 770 },
-      { n: 4, x: 270, y: 740 }, { n: 5, x: 330, y: 740 }, { n: 6, x: 260, y: 750 },
-      { n: 7, x: 340, y: 750 }, { n: 8, x: 300, y: 730 }, { n: 9, x: 280, y: 720 },
-      { n: 10, x: 300, y: 680 }, { n: 11, x: 150, y: 700 }, { n: 12, x: 250, y: 690 },
-      { n: 13, x: 350, y: 690 }, { n: 14, x: 450, y: 700 }, { n: 15, x: 300, y: 800 }
+      { n: 1, x: 370, y: 460 }, { n: 2, x: 430, y: 460 }, { n: 3, x: 400, y: 470 },
+      { n: 4, x: 360, y: 440 }, { n: 5, x: 440, y: 440 }, { n: 6, x: 345, y: 450 },
+      { n: 7, x: 455, y: 450 }, { n: 8, x: 400, y: 430 }, { n: 9, x: 370, y: 420 },
+      { n: 10, x: 400, y: 380 }, { n: 11, x: 200, y: 400 }, { n: 12, x: 330, y: 390 },
+      { n: 13, x: 470, y: 390 }, { n: 14, x: 600, y: 400 }, { n: 15, x: 400, y: 540 }
     ],
     teamB: [
-      { n: 1, x: 320, y: 140 }, { n: 2, x: 280, y: 140 }, { n: 3, x: 300, y: 130 },
-      { n: 4, x: 330, y: 160 }, { n: 5, x: 270, y: 160 }, { n: 6, x: 340, y: 150 },
-      { n: 7, x: 260, y: 150 }, { n: 8, x: 300, y: 170 }, { n: 9, x: 320, y: 180 },
-      { n: 10, x: 300, y: 220 }, { n: 11, x: 450, y: 200 }, { n: 12, x: 350, y: 210 },
-      { n: 13, x: 250, y: 210 }, { n: 14, x: 150, y: 200 }, { n: 15, x: 300, y: 100 }
+      { n: 1, x: 430, y: 340 }, { n: 2, x: 370, y: 340 }, { n: 3, x: 400, y: 330 },
+      { n: 4, x: 440, y: 360 }, { n: 5, x: 360, y: 360 }, { n: 6, x: 455, y: 350 },
+      { n: 7, x: 345, y: 350 }, { n: 8, x: 400, y: 370 }, { n: 9, x: 430, y: 380 },
+      { n: 10, x: 400, y: 420 }, { n: 11, x: 600, y: 400 }, { n: 12, x: 470, y: 410 },
+      { n: 13, x: 330, y: 410 }, { n: 14, x: 200, y: 400 }, { n: 15, x: 400, y: 260 }
     ]
   }
 };
@@ -63,10 +63,13 @@ function App() {
   const [players, setPlayers] = useState(() => initPlayers('scrum'));
   const [routes, setRoutes] = useState([]);
   const [ball, setBall] = useState({ x: 300, y: 750, startX: 300, startY: 750 });
-  const [ballRoute, setBallRoute] = useState(null);
+  const [ballSequence, setBallSequence] = useState([]);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [selectedBall, setSelectedBall] = useState(false);
   const [routeType, setRouteType] = useState(null);
+  const [isBallPassingMode, setIsBallPassingMode] = useState(false);
+  const [ballSequenceBuilder, setBallSequenceBuilder] = useState([]);
+  const [lastBallPosition, setLastBallPosition] = useState(null);
   const [drawStart, setDrawStart] = useState(null);
   const [drawEnd, setDrawEnd] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -78,7 +81,60 @@ function App() {
   const [isPlaybackActive, setIsPlaybackActive] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [draggedPlayer, setDraggedPlayer] = useState(null);
+  const [maxFrames, setMaxFrames] = useState(60);
+
+  // Lasso selection states
+  const [lassoStart, setLassoStart] = useState(null);
+  const [lassoEnd, setLassoEnd] = useState(null);
+  const [selectedPlayers, setSelectedPlayers] = useState([]);
+  const [isLassoing, setIsLassoing] = useState(false);
+  const [isGroupDragging, setIsGroupDragging] = useState(false);
+  const [groupDragStart, setGroupDragStart] = useState(null);
+
+  // Double-click popup menu states
+  const [popupMenu, setPopupMenu] = useState(null);
+  const [lastClickTime, setLastClickTime] = useState(0);
+  const [lastClickedPlayer, setLastClickedPlayer] = useState(null);
+  const DOUBLE_CLICK_THRESHOLD = 250;
+
   const canvasRef = useRef(null);
+
+  const finalizeBallSequence = React.useCallback(() => {
+    if (ballSequenceBuilder.length === 0) {
+      setIsBallPassingMode(false);
+      setSelectedBall(false);
+      setLastBallPosition(null);
+      return;
+    }
+
+    let cumulativeFrame = 0;
+    const finalizedSequence = ballSequenceBuilder.map((segment, index) => {
+      const startFrame = cumulativeFrame;
+      const endFrame = startFrame + segment.duration;
+      cumulativeFrame = endFrame;
+
+      return {
+        ...segment,
+        segmentIndex: index,
+        startFrame,
+        endFrame
+      };
+    });
+
+    setBallSequence(finalizedSequence);
+    setBallSequenceBuilder([]);
+    setIsBallPassingMode(false);
+    setSelectedBall(false);
+    setLastBallPosition(null);
+
+    // Update ball's start position to first player in sequence
+    const firstSegment = finalizedSequence[0];
+    setBall(prev => ({
+      ...prev,
+      startX: firstSegment.startX,
+      startY: firstSegment.startY
+    }));
+  }, [ballSequenceBuilder]);
 
   function initPlayers(formationType) {
     const f = FORMATIONS[formationType];
@@ -92,18 +148,24 @@ function App() {
     const newPlayers = initPlayers(formation);
     setPlayers(newPlayers);
     setRoutes([]);
-    setBallRoute(null);
+    setBallSequence([]);
     setSelectedPlayer(null);
     setSelectedBall(false);
+    setSelectedPlayers([]);
     setFrame(0);
     setBallMoved(false);
+    setIsBallPassingMode(false);
+    setBallSequenceBuilder([]);
+    setLastBallPosition(null);
 
     const teamAPlayers = newPlayers.filter(p => p.team === 'A');
-    const avgY = teamAPlayers.reduce((sum, p) => sum + p.startY, 0) / teamAPlayers.length;
-    const maxY = Math.max(...teamAPlayers.map(p => p.startY));
-    setOffsideLine(maxY - 30);
+    const teamBPlayers = newPlayers.filter(p => p.team === 'B');
+    const teamAMinY = Math.min(...teamAPlayers.map(p => p.startY));
+    const teamBMaxY = Math.max(...teamBPlayers.map(p => p.startY));
+    const centerLine = (teamAMinY + teamBMaxY) / 2;
+    setOffsideLine(centerLine);
 
-    setBall({ x: 300, y: maxY - 10, startX: 300, startY: maxY - 10 });
+    setBall({ x: FIELD_WIDTH / 2, y: teamAMinY - 10, startX: FIELD_WIDTH / 2, startY: teamAMinY - 10 });
   }, [formation]);
 
   useEffect(() => {
@@ -112,35 +174,78 @@ function App() {
     drawField(ctx);
     drawOffsideLine(ctx);
     drawRoutes(ctx);
-    if (ballRoute) drawBallRoute(ctx);
+    if (ballSequence.length > 0) drawBallSequence(ctx);
+    drawBallSequenceBuilder(ctx);
     drawPlayers(ctx);
     drawBall(ctx);
+    drawLassoBox(ctx);
     if (drawStart && drawEnd && routeType) {
       drawPreviewRoute(ctx);
     }
-  }, [players, routes, ball, ballRoute, selectedPlayer, selectedBall, drawStart, drawEnd, routeType, frame, offsideLine, ballMoved]);
+  }, [players, routes, ball, ballSequence, ballSequenceBuilder, isBallPassingMode, lastBallPosition, selectedPlayer, selectedBall, drawStart, drawEnd, routeType, frame, offsideLine, ballMoved, lassoStart, lassoEnd, selectedPlayers, isLassoing]);
 
   useEffect(() => {
     let interval;
     if (isPlaying) {
       interval = setInterval(() => {
         setFrame(f => {
-          if (f >= 60) {
+          if (f >= maxFrames) {
             setIsPlaying(false);
-            return 60;
+            return maxFrames;
           }
           return f + 1;
         });
       }, (1000 / 60) / speed);
     }
     return () => clearInterval(interval);
-  }, [isPlaying, speed]);
+  }, [isPlaying, speed, maxFrames]);
+
+  useEffect(() => {
+    function handleKeyPress(e) {
+      if (e.key === 'Escape' && isBallPassingMode) {
+        finalizeBallSequence();
+      }
+    }
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [isBallPassingMode, finalizeBallSequence]);
+
+  useEffect(() => {
+    let max = 60;
+
+    routes.forEach(route => {
+      if (route.duration && route.duration > max) {
+        max = route.duration;
+      }
+    });
+
+    if (ballSequence.length > 0) {
+      const lastSegment = ballSequence[ballSequence.length - 1];
+      const ballFrames = Math.ceil(lastSegment.endFrame / BALL_SPEED_MULTIPLIER);
+      if (ballFrames > max) max = ballFrames;
+    }
+
+    setMaxFrames(max);
+  }, [routes, ballSequence]);
 
   useEffect(() => {
     if (frame > 0 && isPlaying) {
-      if (ballRoute) {
-        const ballPos = getPositionAtFrame(ballRoute, Math.min(frame * BALL_SPEED_MULTIPLIER, 60), true);
-        setBall(prev => ({ ...prev, x: ballPos.x, y: ballPos.y }));
+      if (ballSequence.length > 0) {
+        const ballFrame = Math.min(frame * BALL_SPEED_MULTIPLIER,
+                                   ballSequence[ballSequence.length - 1].endFrame);
+
+        const activeSegment = ballSequence.find(seg =>
+          ballFrame >= seg.startFrame && ballFrame < seg.endFrame
+        );
+
+        if (activeSegment) {
+          const segmentFrame = ballFrame - activeSegment.startFrame;
+          const ballPos = getPositionAtFrame(activeSegment, segmentFrame, true);
+          setBall(prev => ({ ...prev, x: ballPos.x, y: ballPos.y }));
+        } else if (ballFrame >= ballSequence[ballSequence.length - 1].endFrame) {
+          const lastSeg = ballSequence[ballSequence.length - 1];
+          setBall(prev => ({ ...prev, x: lastSeg.endX, y: lastSeg.endY }));
+        }
 
         if (!ballMoved && frame > 2) {
           setBallMoved(true);
@@ -150,6 +255,12 @@ function App() {
       setPlayers(prevPlayers => prevPlayers.map(p => {
         const route = routes.find(r => r.playerId === p.id);
         if (!route) return { ...p, x: p.startX, y: p.startY };
+
+        if (frame >= route.duration) {
+          const finalPos = getPositionAtFrame(route, route.duration, false);
+          return { ...p, x: finalPos.x, y: finalPos.y, offsideViolation: false };
+        }
+
         const pos = getPositionAtFrame(route, frame, false);
 
         if (p.team === 'A' && !isPlaybackActive && pos.y < offsideLine) {
@@ -162,7 +273,7 @@ function App() {
       setPlayers(prevPlayers => prevPlayers.map(p => ({ ...p, x: p.startX, y: p.startY, offsideViolation: false })));
       setBall(prev => ({ ...prev, x: prev.startX, y: prev.startY }));
     }
-  }, [frame, isPlaying, isDragging, routes, ballRoute, ballMoved, offsideLine]);
+  }, [frame, isPlaying, isDragging, routes, ballSequence, ballMoved, offsideLine]);
 
   function drawField(ctx) {
     ctx.fillStyle = '#2d5016';
@@ -170,7 +281,7 @@ function App() {
 
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 2;
-    for (let i = 0; i <= FIELD_HEIGHT; i += FIELD_HEIGHT / 10) {
+    for (let i = 0; i <= FIELD_HEIGHT; i += FIELD_HEIGHT / 6) {
       ctx.beginPath();
       ctx.moveTo(0, i);
       ctx.lineTo(FIELD_WIDTH, i);
@@ -211,6 +322,12 @@ function App() {
         ctx.beginPath();
         ctx.arc(p.x, p.y, PLAYER_RADIUS + 3, 0, Math.PI * 2);
         ctx.stroke();
+      } else if (selectedPlayers.includes(p.id)) {
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, PLAYER_RADIUS + 4, 0, Math.PI * 2);
+        ctx.stroke();
       } else if (selectedPlayer === p.id) {
         ctx.strokeStyle = '#fbbf24';
         ctx.lineWidth = 3;
@@ -245,12 +362,56 @@ function App() {
     ctx.fill();
   }
 
-  function drawBallRoute(ctx) {
+  function drawBallSequence(ctx) {
+    if (ballSequence.length === 0) return;
+
     ctx.strokeStyle = '#d4a574';
     ctx.lineWidth = 3;
     ctx.setLineDash([5, 5]);
-    drawSingleRoute(ctx, ballRoute);
+
+    ballSequence.forEach(segment => {
+      ctx.beginPath();
+      ctx.moveTo(segment.startX, segment.startY);
+      ctx.lineTo(segment.endX, segment.endY);
+      ctx.stroke();
+
+      ctx.fillStyle = '#d4a574';
+      ctx.beginPath();
+      ctx.arc(segment.endX, segment.endY, 4, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
     ctx.setLineDash([]);
+  }
+
+  function drawBallSequenceBuilder(ctx) {
+    if (!isBallPassingMode || ballSequenceBuilder.length === 0) return;
+
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([5, 5]);
+
+    ballSequenceBuilder.forEach((segment, index) => {
+      ctx.strokeStyle = index === ballSequenceBuilder.length - 1 ? '#fbbf24' : '#d4a574';
+      ctx.beginPath();
+      ctx.moveTo(segment.startX, segment.startY);
+      ctx.lineTo(segment.endX, segment.endY);
+      ctx.stroke();
+    });
+
+    ctx.setLineDash([]);
+
+    if (lastBallPosition) {
+      ctx.fillStyle = '#8b4513';
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(lastBallPosition.x, lastBallPosition.y, BALL_RADIUS + 3, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(lastBallPosition.x, lastBallPosition.y, BALL_RADIUS, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   function drawSingleRoute(ctx, route) {
@@ -332,8 +493,27 @@ function App() {
     ctx.setLineDash([]);
   }
 
+  function drawLassoBox(ctx) {
+    if (isLassoing && lassoStart && lassoEnd) {
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+
+      const width = lassoEnd.x - lassoStart.x;
+      const height = lassoEnd.y - lassoStart.y;
+
+      ctx.strokeRect(lassoStart.x, lassoStart.y, width, height);
+
+      ctx.fillStyle = 'rgba(251, 191, 36, 0.1)';
+      ctx.fillRect(lassoStart.x, lassoStart.y, width, height);
+
+      ctx.setLineDash([]);
+    }
+  }
+
   function getPositionAtFrame(route, currentFrame, isBall = false) {
-    const t = Math.min(currentFrame / 60, 1);
+    const maxFrame = route.duration || 60;
+    const t = Math.min(currentFrame / maxFrame, 1);
 
     if (route.type === 'straight') {
       return {
@@ -364,11 +544,68 @@ function App() {
     return { x: route.startX, y: route.startY };
   }
 
-  function handleCanvasMouseDown(e) {
+  function getScaledCoordinates(e) {
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const scaleX = FIELD_WIDTH / rect.width;
+    const scaleY = FIELD_HEIGHT / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+    return { x, y };
+  }
 
+  function calculateRouteLength(route) {
+    if (route.type === 'straight') {
+      return Math.hypot(route.endX - route.startX, route.endY - route.startY);
+    }
+
+    if (route.type === 'post') {
+      const midX = route.startX + (route.endX - route.startX) * 0.6;
+      const midY = route.startY + (route.endY - route.startY) * 0.6;
+      const angle = Math.atan2(route.endY - route.startY, route.endX - route.startX)
+                    + Math.PI / 4 * route.direction;
+      const len = Math.hypot(route.endX - midX, route.endY - midY);
+      const finalX = midX + Math.cos(angle) * len;
+      const finalY = midY + Math.sin(angle) * len;
+
+      return Math.hypot(midX - route.startX, midY - route.startY) +
+             Math.hypot(finalX - midX, finalY - midY);
+    }
+
+    if (route.type === 'arc') {
+      let totalLength = 0;
+      let prevX = route.startX;
+      let prevY = route.startY;
+
+      for (let i = 1; i <= 10; i++) {
+        const t = i / 10;
+        const x = Math.pow(1-t, 2) * route.startX +
+                  2 * (1-t) * t * route.controlX +
+                  Math.pow(t, 2) * route.endX;
+        const y = Math.pow(1-t, 2) * route.startY +
+                  2 * (1-t) * t * route.controlY +
+                  Math.pow(t, 2) * route.endY;
+
+        totalLength += Math.hypot(x - prevX, y - prevY);
+        prevX = x;
+        prevY = y;
+      }
+      return totalLength;
+    }
+
+    return 0;
+  }
+
+  const BASE_SPEED = 3.5;
+
+  function calculateRouteDuration(routeLength) {
+    const frames = Math.round(routeLength / BASE_SPEED);
+    return Math.max(30, Math.min(180, frames));
+  }
+
+  function handleCanvasMouseDown(e) {
+    const { x, y } = getScaledCoordinates(e);
+
+    // Priority 1: Route drawing mode active
     if (routeType) {
       if (!drawStart) {
         setDrawStart({ x, y });
@@ -376,29 +613,108 @@ function App() {
       return;
     }
 
+    // Priority 2: Ball selection
     const clickedBall = Math.hypot(ball.x - x, ball.y - y) < BALL_RADIUS + 5;
     if (clickedBall) {
-      setSelectedBall(true);
-      setSelectedPlayer(null);
+      if (!isBallPassingMode) {
+        setIsBallPassingMode(true);
+        setSelectedBall(true);
+        setSelectedPlayer(null);
+        setSelectedPlayers([]);
+        setLastBallPosition(null);
+        setBallSequenceBuilder([]);
+      } else {
+        finalizeBallSequence();
+      }
       return;
     }
 
+    // Priority 3: Player click
     const clicked = players.find(p =>
       Math.hypot(p.x - x, p.y - y) < PLAYER_RADIUS + 5
     );
+
     if (clicked) {
+      // Ball passing mode: add pass to player
+      if (isBallPassingMode) {
+        // First player click: just set the starting point
+        if (lastBallPosition === null) {
+          setLastBallPosition({ x: clicked.x, y: clicked.y });
+          return;
+        }
+
+        // Subsequent clicks: create pass segments
+        const newSegment = {
+          type: 'straight',
+          startX: lastBallPosition.x,
+          startY: lastBallPosition.y,
+          endX: clicked.x,
+          endY: clicked.y,
+          targetPlayerId: clicked.id
+        };
+
+        const length = calculateRouteLength(newSegment);
+        const duration = calculateRouteDuration(length);
+        newSegment.length = length;
+        newSegment.duration = duration;
+
+        setBallSequenceBuilder([...ballSequenceBuilder, newSegment]);
+        setLastBallPosition({ x: clicked.x, y: clicked.y });
+        return;
+      }
+
+      const now = Date.now();
+      const timeDiff = now - lastClickTime;
+
+      // Check for double-click
+      if (lastClickedPlayer === clicked.id && timeDiff < DOUBLE_CLICK_THRESHOLD) {
+        // DOUBLE-CLICK - show popup menu
+        setPopupMenu({
+          playerId: clicked.id,
+          x: clicked.x,
+          y: clicked.y
+        });
+        setSelectedPlayer(clicked.id);
+        setSelectedBall(false);
+        setSelectedPlayers([]);
+        setLastClickedPlayer(null);
+        setLastClickTime(0);
+        return;
+      }
+
+      // FIRST CLICK - record time
+      setLastClickTime(now);
+      setLastClickedPlayer(clicked.id);
+
+      // Case A: Clicked on a player in the selected group - start group drag
+      if (selectedPlayers.includes(clicked.id)) {
+        setIsGroupDragging(true);
+        setGroupDragStart({ x, y });
+        return;
+      }
+
+      // Case B: Single player drag - clear group selection
       setIsDragging(true);
       setDraggedPlayer(clicked.id);
       setSelectedPlayer(clicked.id);
       setSelectedBall(false);
+      setSelectedPlayers([]);
+      return;
     }
+
+    // Priority 4: Empty space - start lasso
+    setIsLassoing(true);
+    setLassoStart({ x, y });
+    setLassoEnd({ x, y });
+    setSelectedPlayer(null);
+    setSelectedBall(false);
+    setSelectedPlayers([]);
   }
 
   function handleCanvasMouseMove(e) {
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const { x, y } = getScaledCoordinates(e);
 
+    // Case 1: Single player dragging
     if (isDragging && draggedPlayer !== null) {
       setPlayers(prevPlayers => prevPlayers.map(p =>
         p.id === draggedPlayer
@@ -408,45 +724,99 @@ function App() {
       return;
     }
 
+    // Case 2: Group dragging
+    if (isGroupDragging && groupDragStart) {
+      const deltaX = x - groupDragStart.x;
+      const deltaY = y - groupDragStart.y;
+
+      setPlayers(prevPlayers => prevPlayers.map(p => {
+        if (selectedPlayers.includes(p.id)) {
+          return {
+            ...p,
+            x: p.startX + deltaX,
+            y: p.startY + deltaY
+          };
+        }
+        return p;
+      }));
+      return;
+    }
+
+    // Case 3: Lasso box drawing
+    if (isLassoing && lassoStart) {
+      setLassoEnd({ x, y });
+
+      // Calculate which players are inside lasso box
+      const minX = Math.min(lassoStart.x, x);
+      const maxX = Math.max(lassoStart.x, x);
+      const minY = Math.min(lassoStart.y, y);
+      const maxY = Math.max(lassoStart.y, y);
+
+      const playersInBox = players.filter(p =>
+        p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY
+      ).map(p => p.id);
+
+      setSelectedPlayers(playersInBox);
+      return;
+    }
+
+    // Case 4: Route preview
     if (drawStart && routeType) {
       setDrawEnd({ x, y });
     }
   }
 
+  function handleCanvasContextMenu(e) {
+    e.preventDefault();
+    if (isBallPassingMode) {
+      finalizeBallSequence();
+    }
+  }
+
   function handleCanvasMouseUp(e) {
+    // Case 1: Single drag end
     if (isDragging) {
       setIsDragging(false);
       setDraggedPlayer(null);
       return;
     }
 
+    // Case 2: Group drag end - commit positions
+    if (isGroupDragging) {
+      const { x, y } = getScaledCoordinates(e);
+      const deltaX = x - groupDragStart.x;
+      const deltaY = y - groupDragStart.y;
+
+      setPlayers(prevPlayers => prevPlayers.map(p => {
+        if (selectedPlayers.includes(p.id)) {
+          return {
+            ...p,
+            startX: p.x,
+            startY: p.y
+          };
+        }
+        return p;
+      }));
+
+      setIsGroupDragging(false);
+      setGroupDragStart(null);
+      return;
+    }
+
+    // Case 3: Lasso end - keep selection
+    if (isLassoing) {
+      setIsLassoing(false);
+      setLassoStart(null);
+      setLassoEnd(null);
+      // selectedPlayers already set during mousemove
+      return;
+    }
+
+    // Case 4: Route drawing
     if (routeType && drawStart) {
-      const rect = canvasRef.current.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const { x, y } = getScaledCoordinates(e);
 
-      if (selectedBall) {
-        const dx = x - drawStart.x;
-        const dy = y - drawStart.y;
-        const perpX = -dy;
-        const perpY = dx;
-        const len = Math.hypot(dx, dy);
-        const offset = len * 0.3;
-        const controlX = (drawStart.x + x) / 2 + (perpX / len) * offset;
-        const controlY = (drawStart.y + y) / 2 + (perpY / len) * offset;
-
-        const newRoute = {
-          type: routeType,
-          startX: ball.startX,
-          startY: ball.startY,
-          endX: x,
-          endY: y,
-          controlX: routeType === 'arc' ? controlX : undefined,
-          controlY: routeType === 'arc' ? controlY : undefined,
-          direction: 1
-        };
-        setBallRoute(newRoute);
-      } else if (selectedPlayer !== null) {
+      if (selectedPlayer !== null) {
         const player = players.find(p => p.id === selectedPlayer);
         const dx = x - drawStart.x;
         const dy = y - drawStart.y;
@@ -469,6 +839,10 @@ function App() {
           controlY: routeType === 'arc' ? controlY : undefined,
           direction: 1
         };
+        const length = calculateRouteLength(newRoute);
+        const duration = calculateRouteDuration(length);
+        newRoute.length = length;
+        newRoute.duration = duration;
         setRoutes([...routes.filter(r => r.playerId !== selectedPlayer), newRoute]);
       }
 
@@ -480,15 +854,36 @@ function App() {
     }
   }
 
+  function handlePopupRouteSelection(routeTypeSelected) {
+    if (!popupMenu) return;
+
+    const player = players.find(p => p.id === popupMenu.playerId);
+    if (!player) return;
+
+    setRouteType(routeTypeSelected);
+    setDrawStart({ x: player.x, y: player.y });
+    setPopupMenu(null);
+    setSelectedPlayer(popupMenu.playerId);
+  }
+
+  function closePopupMenu() {
+    setPopupMenu(null);
+    setSelectedPlayer(null);
+  }
+
   function resetPlay() {
     const newPlayers = initPlayers(formation);
     setPlayers(newPlayers);
     setRoutes([]);
-    setBallRoute(null);
+    setBallSequence([]);
 
     const teamAPlayers = newPlayers.filter(p => p.team === 'A');
-    const maxY = Math.max(...teamAPlayers.map(p => p.startY));
-    const newBall = { x: 300, y: maxY - 10, startX: 300, startY: maxY - 10 };
+    const teamBPlayers = newPlayers.filter(p => p.team === 'B');
+    const teamAMinY = Math.min(...teamAPlayers.map(p => p.startY));
+    const teamBMaxY = Math.max(...teamBPlayers.map(p => p.startY));
+    const centerLine = (teamAMinY + teamBMaxY) / 2;
+    setOffsideLine(centerLine);
+    const newBall = { x: FIELD_WIDTH / 2, y: teamAMinY - 10, startX: FIELD_WIDTH / 2, startY: teamAMinY - 10 };
     setBall(newBall);
 
     setFrame(0);
@@ -497,6 +892,10 @@ function App() {
     setIsPlaybackActive(false);
     setSelectedPlayer(null);
     setSelectedBall(false);
+    setSelectedPlayers([]);
+    setIsBallPassingMode(false);
+    setBallSequenceBuilder([]);
+    setLastBallPosition(null);
   }
 
   function savePlay() {
@@ -507,12 +906,14 @@ function App() {
     const playData = {
       name: playName,
       routes,
-      ballRoute,
+      ballSequence,
+      ballRoute: null,
       players: players.map(p => ({ ...p, startX: p.startX, startY: p.startY })),
       ball: { ...ball, x: ball.startX, y: ball.startY },
       formation,
       offsideLine,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      version: 2
     };
     window.storage = window.storage || { data: {} };
     window.storage.data[playName] = playData;
@@ -531,8 +932,36 @@ function App() {
     }
 
     setPlayName(playData.name);
-    setRoutes(playData.routes);
-    setBallRoute(playData.ballRoute || null);
+
+    const migratedRoutes = (playData.routes || []).map(route => {
+      if (route.duration) return route;
+
+      const length = calculateRouteLength(route);
+      const duration = calculateRouteDuration(length);
+      return { ...route, length, duration };
+    });
+    setRoutes(migratedRoutes);
+
+    if (playData.ballSequence) {
+      setBallSequence(playData.ballSequence);
+    } else if (playData.ballRoute) {
+      const route = playData.ballRoute;
+      const length = calculateRouteLength(route);
+      const duration = calculateRouteDuration(length);
+
+      setBallSequence([{
+        ...route,
+        length,
+        duration,
+        segmentIndex: 0,
+        startFrame: 0,
+        endFrame: duration,
+        targetPlayerId: null
+      }]);
+    } else {
+      setBallSequence([]);
+    }
+
     setPlayers(playData.players);
     setBall(playData.ball || { x: 300, y: 750, startX: 300, startY: 750 });
     setFormation(playData.formation);
@@ -545,7 +974,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold mb-4">Rugby Play Designer</h1>
 
         <div className="mb-4 flex gap-4 items-center flex-wrap">
@@ -559,12 +988,13 @@ function App() {
             <option value="freePlay">Free Play</option>
           </select>
 
-          {(selectedPlayer !== null || selectedBall) && !routeType && (
-            <div className="flex gap-2">
-              <button onClick={() => setRouteType('straight')} className="bg-blue-600 px-3 py-2 rounded hover:bg-blue-700">Straight</button>
-              <button onClick={() => setRouteType('post')} className="bg-blue-600 px-3 py-2 rounded hover:bg-blue-700">Post</button>
-              <button onClick={() => setRouteType('arc')} className="bg-blue-600 px-3 py-2 rounded hover:bg-blue-700">Arc</button>
-            </div>
+          {ballSequence.length > 0 && !isBallPassingMode && (
+            <button
+              onClick={() => setBallSequence([])}
+              className="bg-red-600 px-3 py-2 rounded hover:bg-red-700"
+            >
+              Clear Ball Route
+            </button>
           )}
 
           <div className="flex gap-2 items-center">
@@ -573,7 +1003,7 @@ function App() {
                 const newIsPlaying = !isPlaying;
                 setIsPlaying(newIsPlaying);
                 if (newIsPlaying) setIsPlaybackActive(true);
-                if (frame === 60) { resetPlay(); }
+                if (frame === maxFrames) { resetPlay(); }
               }}
               className="bg-green-600 px-3 py-2 rounded hover:bg-green-700"
             >
@@ -587,7 +1017,7 @@ function App() {
               <SkipBack size={20} />
             </button>
             <button
-              onClick={() => setFrame(Math.min(60, frame + 1))}
+              onClick={() => setFrame(Math.min(maxFrames, frame + 1))}
               disabled={isPlaying}
               className="bg-gray-700 px-3 py-2 rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -634,22 +1064,79 @@ function App() {
           {formation === 'freePlay' && 'Free Play (Post-Ruck)'}
         </div>
 
-        <canvas
-          ref={canvasRef}
-          width={FIELD_WIDTH}
-          height={FIELD_HEIGHT}
-          onMouseDown={handleCanvasMouseDown}
-          onMouseMove={handleCanvasMouseMove}
-          onMouseUp={handleCanvasMouseUp}
-          className="border-2 border-gray-700 rounded cursor-crosshair"
-        />
+        <div className="relative w-full flex justify-center">
+          <canvas
+            ref={canvasRef}
+            width={FIELD_WIDTH}
+            height={FIELD_HEIGHT}
+            style={{ width: '100%', maxWidth: '1200px', height: 'auto' }}
+            onMouseDown={handleCanvasMouseDown}
+            onMouseMove={handleCanvasMouseMove}
+            onMouseUp={handleCanvasMouseUp}
+            onContextMenu={handleCanvasContextMenu}
+            className="border-2 border-gray-700 rounded cursor-crosshair"
+          />
+          {popupMenu && canvasRef.current && (
+            <div
+              style={{
+                position: 'absolute',
+                left: `${(popupMenu.x / FIELD_WIDTH) * canvasRef.current.getBoundingClientRect().width}px`,
+                top: `${(popupMenu.y / FIELD_HEIGHT) * canvasRef.current.getBoundingClientRect().height}px`,
+                transform: 'translate(-50%, calc(-100% - 15px))',
+                zIndex: 1000,
+                pointerEvents: 'auto'
+              }}
+              className="bg-gray-800 rounded-lg shadow-xl border-2 border-yellow-500 p-2 flex gap-2"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => handlePopupRouteSelection('straight')}
+                className="bg-blue-600 px-3 py-2 rounded hover:bg-blue-700 text-sm font-medium"
+              >
+                Straight
+              </button>
+              <button
+                onClick={() => handlePopupRouteSelection('post')}
+                className="bg-blue-600 px-3 py-2 rounded hover:bg-blue-700 text-sm font-medium"
+              >
+                Post
+              </button>
+              <button
+                onClick={() => handlePopupRouteSelection('arc')}
+                className="bg-blue-600 px-3 py-2 rounded hover:bg-blue-700 text-sm font-medium"
+              >
+                Arc
+              </button>
+              <button
+                onClick={closePopupMenu}
+                className="bg-gray-600 px-3 py-2 rounded hover:bg-gray-700 text-sm font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+
+        {isBallPassingMode && (
+          <div className="mt-2 mb-2 p-3 bg-yellow-600 rounded text-white font-semibold">
+            Ball Passing Mode Active
+            {ballSequenceBuilder.length > 0 && (
+              <span> - {ballSequenceBuilder.length} pass(es) added</span>
+            )}
+            <span className="block text-sm mt-1">
+              Click players to add passes | Right-click or ESC to finish
+            </span>
+          </div>
+        )}
 
         <div className="mt-4 text-sm text-gray-400">
           <p><strong>1. Reposition:</strong> Click and drag any player to move them to a new starting position</p>
-          <p><strong>2. Draw Routes:</strong> Select a player/ball, choose route type (Straight/Post/Arc), then click and drag on field</p>
-          <p><strong>3. Playback:</strong> Use play button to animate (ball moves 2.5x faster than players)</p>
-          <p><strong>4. Offsides:</strong> Orange line enforced until ball moves - Team A cannot cross early (red highlight)</p>
-          <p><strong>5. Reset:</strong> Returns all players to selected formation baseline (Scrum/Lineout/Free Play)</p>
+          <p><strong>2. Lasso Select:</strong> Click-drag empty space to select multiple players, then drag any selected player to move the group</p>
+          <p><strong>3. Draw Routes (Players):</strong> Double-click a player to open route menu, select route type, then drag on field</p>
+          <p><strong>4. Draw Ball Passes:</strong> Click ball to start, then click players in sequence (9→10→12). Right-click or ESC to finish.</p>
+          <p><strong>5. Playback:</strong> Use play button to animate (ball moves 2.5x faster than players)</p>
+          <p><strong>6. Offsides:</strong> Orange line enforced until ball moves - Team A cannot cross early (red highlight)</p>
+          <p><strong>7. Reset:</strong> Returns all players to selected formation baseline (Scrum/Lineout/Free Play)</p>
         </div>
       </div>
     </div>
