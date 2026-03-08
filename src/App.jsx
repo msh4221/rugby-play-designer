@@ -6,6 +6,9 @@ const FIELD_HEIGHT = 600;
 const PLAYER_RADIUS = 12;
 const BALL_RADIUS = 6;
 const BALL_SPEED_MULTIPLIER = 2.5;
+const OFFSIDE_TAB_WIDTH = 15;
+const OFFSIDE_TAB_HEIGHT = 40;
+const OFFSIDE_MARGIN = 100; // 10 "meters" from top/bottom
 
 const FORMATIONS = {
   scrum: {
@@ -82,6 +85,7 @@ function App() {
   const [isDragging, setIsDragging] = useState(false);
   const [draggedPlayer, setDraggedPlayer] = useState(null);
   const [maxFrames, setMaxFrames] = useState(60);
+  const [isDraggingOffsideTab, setIsDraggingOffsideTab] = useState(false);
 
   // Lasso selection states
   const [lassoStart, setLassoStart] = useState(null);
@@ -173,6 +177,7 @@ function App() {
     const ctx = canvas.getContext('2d');
     drawField(ctx);
     drawOffsideLine(ctx);
+    drawOffsideTab(ctx);
     drawRoutes(ctx);
     if (ballSequence.length > 0) drawBallSequence(ctx);
     drawBallSequenceBuilder(ctx);
@@ -182,7 +187,7 @@ function App() {
     if (drawStart && drawEnd && routeType) {
       drawPreviewRoute(ctx);
     }
-  }, [players, routes, ball, ballSequence, ballSequenceBuilder, isBallPassingMode, lastBallPosition, selectedPlayer, selectedBall, drawStart, drawEnd, routeType, frame, offsideLine, ballMoved, lassoStart, lassoEnd, selectedPlayers, isLassoing]);
+  }, [players, routes, ball, ballSequence, ballSequenceBuilder, isBallPassingMode, lastBallPosition, selectedPlayer, selectedBall, drawStart, drawEnd, routeType, frame, offsideLine, ballMoved, lassoStart, lassoEnd, selectedPlayers, isLassoing, isDraggingOffsideTab]);
 
   useEffect(() => {
     let interval;
@@ -309,6 +314,33 @@ function App() {
       ctx.fillStyle = '#ff6b35';
       ctx.font = '12px sans-serif';
       ctx.fillText('Offsides Line', 10, offsideLine - 5);
+    }
+  }
+
+  function drawOffsideTab(ctx) {
+    if (ballMoved) return;
+
+    const tabX = 0; // Left edge of canvas
+    const tabY = offsideLine - OFFSIDE_TAB_HEIGHT / 2;
+
+    // Draw tab background
+    ctx.fillStyle = isDraggingOffsideTab ? '#ff8c61' : '#ff6b35';
+    ctx.fillRect(tabX, tabY, OFFSIDE_TAB_WIDTH, OFFSIDE_TAB_HEIGHT);
+
+    // Draw tab border
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(tabX, tabY, OFFSIDE_TAB_WIDTH, OFFSIDE_TAB_HEIGHT);
+
+    // Draw grip lines
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 3; i++) {
+      const y = tabY + OFFSIDE_TAB_HEIGHT / 2 - 6 + i * 6;
+      ctx.beginPath();
+      ctx.moveTo(tabX + 3, y);
+      ctx.lineTo(tabX + OFFSIDE_TAB_WIDTH - 3, y);
+      ctx.stroke();
     }
   }
 
@@ -605,6 +637,17 @@ function App() {
   function handleCanvasMouseDown(e) {
     const { x, y } = getScaledCoordinates(e);
 
+    // Priority 0: Offsides tab dragging
+    if (!ballMoved) {
+      const tabX = 0;
+      const tabY = offsideLine - OFFSIDE_TAB_HEIGHT / 2;
+      if (x >= tabX && x <= tabX + OFFSIDE_TAB_WIDTH &&
+          y >= tabY && y <= tabY + OFFSIDE_TAB_HEIGHT) {
+        setIsDraggingOffsideTab(true);
+        return;
+      }
+    }
+
     // Priority 1: Route drawing mode active
     if (routeType) {
       if (!drawStart) {
@@ -714,6 +757,26 @@ function App() {
   function handleCanvasMouseMove(e) {
     const { x, y } = getScaledCoordinates(e);
 
+    // Case 0: Offsides tab dragging
+    if (isDraggingOffsideTab) {
+      const newOffsideLine = Math.max(OFFSIDE_MARGIN, Math.min(FIELD_HEIGHT - OFFSIDE_MARGIN, y));
+      setOffsideLine(newOffsideLine);
+
+      // Snap players to stay on their side of the offsides line
+      setPlayers(prevPlayers => prevPlayers.map(p => {
+        // Team A (blue) must stay at or below the line (higher Y values)
+        if (p.team === 'A' && p.startY < newOffsideLine) {
+          return { ...p, y: newOffsideLine, startY: newOffsideLine };
+        }
+        // Team B (red) must stay at or above the line (lower Y values)
+        if (p.team === 'B' && p.startY > newOffsideLine) {
+          return { ...p, y: newOffsideLine, startY: newOffsideLine };
+        }
+        return p;
+      }));
+      return;
+    }
+
     // Case 1: Single player dragging
     if (isDragging && draggedPlayer !== null) {
       setPlayers(prevPlayers => prevPlayers.map(p =>
@@ -774,6 +837,12 @@ function App() {
   }
 
   function handleCanvasMouseUp(e) {
+    // Case 0: Offsides tab drag end
+    if (isDraggingOffsideTab) {
+      setIsDraggingOffsideTab(false);
+      return;
+    }
+
     // Case 1: Single drag end
     if (isDragging) {
       setIsDragging(false);
