@@ -27,36 +27,71 @@ const FORMATIONS = {
       { n: 13, x: 240, y: 320 }, { n: 14, x: 130, y: 320 }, { n: 15, x: 400, y: 260 }
     ]
   },
-  lineout: {
+  lineoutLeft: {
     teamA: [
-      { n: 1, x: 200, y: 430 }, { n: 2, x: 80, y: 440 }, { n: 3, x: 200, y: 450 },
-      { n: 4, x: 130, y: 400 }, { n: 5, x: 130, y: 420 }, { n: 6, x: 130, y: 440 },
-      { n: 7, x: 130, y: 460 }, { n: 8, x: 130, y: 480 }, { n: 9, x: 250, y: 440 },
-      { n: 10, x: 330, y: 440 }, { n: 11, x: 410, y: 440 }, { n: 12, x: 490, y: 440 },
-      { n: 13, x: 570, y: 440 }, { n: 14, x: 650, y: 440 }, { n: 15, x: 400, y: 540 }
+      { n: 1, x: 20, y: 235 }, { n: 2, x: 5, y: 210 }, { n: 3, x: 180, y: 235 },
+      { n: 4, x: 40, y: 220 }, { n: 5, x: 70, y: 220 }, { n: 6, x: 100, y: 220 },
+      { n: 7, x: 130, y: 220 }, { n: 8, x: 160, y: 220 }, { n: 9, x: 195, y: 220 },
+      { n: 10, x: 290, y: 265 }, { n: 11, x: 100, y: 285 }, { n: 12, x: 390, y: 265 },
+      { n: 13, x: 490, y: 265 }, { n: 14, x: 660, y: 260 }, { n: 15, x: 400, y: 370 }
     ],
     teamB: [
-      { n: 1, x: 600, y: 450 }, { n: 2, x: 720, y: 440 }, { n: 3, x: 600, y: 430 },
-      { n: 4, x: 670, y: 480 }, { n: 5, x: 670, y: 460 }, { n: 6, x: 670, y: 440 },
-      { n: 7, x: 670, y: 420 }, { n: 8, x: 670, y: 400 }, { n: 9, x: 550, y: 440 },
-      { n: 10, x: 470, y: 440 }, { n: 11, x: 390, y: 440 }, { n: 12, x: 310, y: 440 },
-      { n: 13, x: 230, y: 440 }, { n: 14, x: 150, y: 440 }, { n: 15, x: 400, y: 260 }
+      { n: 1, x: 20, y: 190 }, { n: 2, x: 185, y: 200 }, { n: 3, x: 185, y: 190 },
+      { n: 4, x: 40, y: 200 }, { n: 5, x: 70, y: 200 }, { n: 6, x: 100, y: 200 },
+      { n: 7, x: 130, y: 200 }, { n: 8, x: 160, y: 200 }, { n: 9, x: 200, y: 198 },
+      { n: 10, x: 290, y: 155 }, { n: 11, x: 100, y: 130 }, { n: 12, x: 390, y: 155 },
+      { n: 13, x: 490, y: 155 }, { n: 14, x: 660, y: 150 }, { n: 15, x: 400, y: 80 }
+    ]
+  },
+  lineoutRight: {
+    teamA: [
+      { n: 1, x: 780, y: 235 }, { n: 2, x: 795, y: 210 }, { n: 3, x: 620, y: 235 },
+      { n: 4, x: 760, y: 220 }, { n: 5, x: 730, y: 220 }, { n: 6, x: 700, y: 220 },
+      { n: 7, x: 670, y: 220 }, { n: 8, x: 640, y: 220 }, { n: 9, x: 605, y: 220 },
+      { n: 10, x: 510, y: 265 }, { n: 11, x: 140, y: 260 }, { n: 12, x: 410, y: 265 },
+      { n: 13, x: 310, y: 265 }, { n: 14, x: 700, y: 285 }, { n: 15, x: 400, y: 370 }
+    ],
+    teamB: [
+      { n: 1, x: 780, y: 190 }, { n: 2, x: 615, y: 200 }, { n: 3, x: 615, y: 190 },
+      { n: 4, x: 760, y: 200 }, { n: 5, x: 730, y: 200 }, { n: 6, x: 700, y: 200 },
+      { n: 7, x: 670, y: 200 }, { n: 8, x: 640, y: 200 }, { n: 9, x: 600, y: 198 },
+      { n: 10, x: 510, y: 155 }, { n: 11, x: 660, y: 130 }, { n: 12, x: 410, y: 155 },
+      { n: 13, x: 310, y: 155 }, { n: 14, x: 140, y: 150 }, { n: 15, x: 400, y: 80 }
     ]
   },
   freePlay: {
     teamA: [
-      { n: 1, x: 370, y: 460 }, { n: 2, x: 430, y: 460 }, { n: 3, x: 400, y: 470 },
-      { n: 4, x: 360, y: 440 }, { n: 5, x: 440, y: 440 }, { n: 6, x: 345, y: 450 },
-      { n: 7, x: 455, y: 450 }, { n: 8, x: 400, y: 430 }, { n: 9, x: 370, y: 420 },
-      { n: 10, x: 400, y: 380 }, { n: 11, x: 200, y: 400 }, { n: 12, x: 330, y: 390 },
-      { n: 13, x: 470, y: 390 }, { n: 14, x: 600, y: 400 }, { n: 15, x: 400, y: 540 }
+      // At ruck: #6, #7 (forwards), #11 (blindside back), #9 behind
+      { n: 6, x: 100, y: 335 }, { n: 7, x: 122, y: 335 }, { n: 11, x: 65, y: 348 },
+      { n: 9, x: 112, y: 362 },
+      // Pod in front of #10 (#4, #5, #8)
+      { n: 4, x: 228, y: 372 }, { n: 5, x: 268, y: 368 }, { n: 8, x: 308, y: 372 },
+      // #10: 5m back from #9, stepping right
+      { n: 10, x: 267, y: 392 },
+      // Pod in front of #12 (#1, #3)
+      { n: 1, x: 400, y: 406 }, { n: 3, x: 440, y: 406 },
+      // #12: same step-right/back ratio as #9→#10
+      { n: 12, x: 422, y: 422 },
+      // #13, #14: spread evenly to right sideline behind #12
+      { n: 13, x: 545, y: 432 }, { n: 14, x: 668, y: 432 },
+      // #2: left sideline forward
+      { n: 2, x: 15, y: 370 },
+      // #15: wide right as extra back
+      { n: 15, x: 765, y: 448 }
     ],
     teamB: [
-      { n: 1, x: 430, y: 340 }, { n: 2, x: 370, y: 340 }, { n: 3, x: 400, y: 330 },
-      { n: 4, x: 440, y: 360 }, { n: 5, x: 360, y: 360 }, { n: 6, x: 455, y: 350 },
-      { n: 7, x: 345, y: 350 }, { n: 8, x: 400, y: 370 }, { n: 9, x: 430, y: 380 },
-      { n: 10, x: 400, y: 420 }, { n: 11, x: 600, y: 400 }, { n: 12, x: 470, y: 410 },
-      { n: 13, x: 330, y: 410 }, { n: 14, x: 200, y: 400 }, { n: 15, x: 400, y: 260 }
+      // Very close either side of ruck (ruck center ~x=110)
+      { n: 6, x: 90, y: 300 }, { n: 7, x: 132, y: 300 },
+      // Directly outside those
+      { n: 4, x: 55, y: 300 }, { n: 5, x: 168, y: 300 },
+      // Normal flat line filling the rest of the field
+      { n: 1, x: 210, y: 300 }, { n: 2, x: 284, y: 300 }, { n: 3, x: 358, y: 300 },
+      { n: 8, x: 432, y: 300 }, { n: 9, x: 506, y: 300 }, { n: 10, x: 580, y: 300 },
+      { n: 12, x: 654, y: 300 }, { n: 13, x: 728, y: 300 },
+      // Wings on sidelines, slightly off the line (deeper)
+      { n: 11, x: 20, y: 312 }, { n: 14, x: 778, y: 312 },
+      // Fullback sweeper
+      { n: 15, x: 400, y: 248 }
     ]
   }
 };
@@ -1053,7 +1088,8 @@ function App() {
             className="bg-gray-800 px-3 py-2 rounded"
           >
             <option value="scrum">Scrum</option>
-            <option value="lineout">Lineout</option>
+            <option value="lineoutLeft">Lineout (Left)</option>
+            <option value="lineoutRight">Lineout (Right)</option>
             <option value="freePlay">Free Play</option>
           </select>
 
@@ -1129,7 +1165,8 @@ function App() {
         <div className="mb-2 text-sm text-gray-400">
           <span className="font-semibold">Formation: </span>
           {formation === 'scrum' && 'Scrum (Set Piece)'}
-          {formation === 'lineout' && 'Lineout (Sideline Throw)'}
+          {formation === 'lineoutLeft' && 'Lineout - Left Sideline Throw'}
+          {formation === 'lineoutRight' && 'Lineout - Right Sideline Throw'}
           {formation === 'freePlay' && 'Free Play (Post-Ruck)'}
         </div>
 
