@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Save, FolderOpen, RotateCcw } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Save, FolderOpen, RotateCcw, LogOut, LogIn } from 'lucide-react';
+import { supabase } from './supabaseClient';
 
 const FIELD_WIDTH = 800;
 const FIELD_HEIGHT = 600;
@@ -97,6 +98,14 @@ const FORMATIONS = {
 };
 
 function App() {
+  // Auth states
+  const [user, setUser] = useState(null);
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+
+  // Existing game states
   const [formation, setFormation] = useState('scrum');
   const [players, setPlayers] = useState(() => initPlayers('scrum'));
   const [routes, setRoutes] = useState([]);
@@ -134,9 +143,70 @@ function App() {
   const [popupMenu, setPopupMenu] = useState(null);
   const [lastClickTime, setLastClickTime] = useState(0);
   const [lastClickedPlayer, setLastClickedPlayer] = useState(null);
+  const [showPostAngleMenu, setShowPostAngleMenu] = useState(false);
+  const [postAngle, setPostAngle] = useState(1); // 1 = right, -1 = left
   const DOUBLE_CLICK_THRESHOLD = 250;
 
   const canvasRef = useRef(null);
+
+  // Check auth status on mount
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription?.unsubscribe();
+  }, []);
+
+  // Auth functions
+  async function handleSignUp() {
+    setAuthLoading(true);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: authEmail,
+        password: authPassword
+      });
+      if (error) throw error;
+      alert('Check your email for a confirmation link');
+      setAuthEmail('');
+      setAuthPassword('');
+      setIsSignUp(false);
+    } catch (error) {
+      alert('Error signing up: ' + error.message);
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function handleSignIn() {
+    setAuthLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: authEmail,
+        password: authPassword
+      });
+      if (error) throw error;
+      setAuthEmail('');
+      setAuthPassword('');
+    } catch (error) {
+      alert('Error signing in: ' + error.message);
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function handleSignOut() {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } catch (error) {
+      alert('Error signing out: ' + error.message);
+    }
+  }
 
   const finalizeBallSequence = React.useCallback(() => {
     if (ballSequenceBuilder.length === 0) {
@@ -222,7 +292,7 @@ function App() {
     if (drawStart && drawEnd && routeType) {
       drawPreviewRoute(ctx);
     }
-  }, [players, routes, ball, ballSequence, ballSequenceBuilder, isBallPassingMode, lastBallPosition, selectedPlayer, selectedBall, drawStart, drawEnd, routeType, frame, offsideLine, ballMoved, lassoStart, lassoEnd, selectedPlayers, isLassoing, isDraggingOffsideTab]);
+  }, [players, routes, ball, ballSequence, ballSequenceBuilder, isBallPassingMode, lastBallPosition, selectedPlayer, selectedBall, drawStart, drawEnd, routeType, frame, offsideLine, ballMoved, lassoStart, lassoEnd, selectedPlayers, isLassoing, isDraggingOffsideTab, postAngle, showPostAngleMenu]);
 
   useEffect(() => {
     let interval;
@@ -531,7 +601,7 @@ function App() {
     } else if (routeType === 'post') {
       const midX = drawStart.x + (drawEnd.x - drawStart.x) * 0.6;
       const midY = drawStart.y + (drawEnd.y - drawStart.y) * 0.6;
-      const angle = Math.atan2(drawEnd.y - drawStart.y, drawEnd.x - drawStart.x) + Math.PI / 4;
+      const angle = Math.atan2(drawEnd.y - drawStart.y, drawEnd.x - drawStart.x) + Math.PI / 4 * postAngle;
       const len = Math.hypot(drawEnd.x - midX, drawEnd.y - midY);
       const finalX = midX + Math.cos(angle) * len;
       const finalY = midY + Math.sin(angle) * len;
@@ -941,7 +1011,7 @@ function App() {
           endY: y,
           controlX: routeType === 'arc' ? controlX : undefined,
           controlY: routeType === 'arc' ? controlY : undefined,
-          direction: 1
+          direction: routeType === 'post' ? postAngle : 1
         };
         const length = calculateRouteLength(newRoute);
         const duration = calculateRouteDuration(length);
@@ -955,6 +1025,7 @@ function App() {
       setRouteType(null);
       setSelectedPlayer(null);
       setSelectedBall(false);
+      setPostAngle(1); // Reset to default (right)
     }
   }
 
@@ -964,15 +1035,37 @@ function App() {
     const player = players.find(p => p.id === popupMenu.playerId);
     if (!player) return;
 
+    // Show angle menu if post is selected
+    if (routeTypeSelected === 'post') {
+      setShowPostAngleMenu(true);
+      return;
+    }
+
     setRouteType(routeTypeSelected);
     setDrawStart({ x: player.x, y: player.y });
     setPopupMenu(null);
+    setShowPostAngleMenu(false);
+    setSelectedPlayer(popupMenu.playerId);
+  }
+
+  function handlePostAngleSelection(angle) {
+    if (!popupMenu) return;
+
+    const player = players.find(p => p.id === popupMenu.playerId);
+    if (!player) return;
+
+    setPostAngle(angle);
+    setRouteType('post');
+    setDrawStart({ x: player.x, y: player.y });
+    setPopupMenu(null);
+    setShowPostAngleMenu(false);
     setSelectedPlayer(popupMenu.playerId);
   }
 
   function closePopupMenu() {
     setPopupMenu(null);
     setSelectedPlayer(null);
+    setShowPostAngleMenu(false);
   }
 
   function resetPlay() {
@@ -1002,84 +1095,177 @@ function App() {
     setLastBallPosition(null);
   }
 
-  function savePlay() {
+  async function savePlay() {
+    if (!user) {
+      alert('Please sign in to save plays');
+      return;
+    }
     if (!playName.trim()) {
       alert('Enter a play name');
       return;
     }
-    const playData = {
-      name: playName,
-      routes,
-      ballSequence,
-      ballRoute: null,
-      players: players.map(p => ({ ...p, startX: p.startX, startY: p.startY })),
-      ball: { ...ball, x: ball.startX, y: ball.startY },
-      formation,
-      offsideLine,
-      timestamp: Date.now(),
-      version: 2
-    };
-    window.storage = window.storage || { data: {} };
-    window.storage.data[playName] = playData;
-    alert('Play saved');
+
+    try {
+      const playData = {
+        name: playName,
+        formation,
+        routes,
+        ball_sequence: ballSequence,
+        players: players.map(p => ({ ...p, startX: p.startX, startY: p.startY })),
+        ball: { ...ball, x: ball.startX, y: ball.startY },
+        offside_line: offsideLine
+      };
+
+      const { error } = await supabase
+        .from('plays')
+        .upsert(
+          { ...playData, user_id: user.id },
+          { onConflict: 'user_id,name' }
+        );
+
+      if (error) throw error;
+      alert('Play saved successfully');
+    } catch (error) {
+      alert('Error saving play: ' + error.message);
+    }
   }
 
-  function loadPlay() {
-    const name = prompt('Enter play name to load:');
-    if (!name) return;
-
-    window.storage = window.storage || { data: {} };
-    const playData = window.storage.data[name];
-    if (!playData) {
-      alert('Play not found');
+  const loadPlay = async () => {
+    if (!user) {
+      alert('Please sign in to load plays');
       return;
     }
 
-    setPlayName(playData.name);
+    const name = prompt('Enter play name to load:');
+    if (!name) return;
 
-    const migratedRoutes = (playData.routes || []).map(route => {
-      if (route.duration) return route;
+    try {
+      const { data, error } = await supabase
+        .from('plays')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('name', name)
+        .single();
 
-      const length = calculateRouteLength(route);
-      const duration = calculateRouteDuration(length);
-      return { ...route, length, duration };
-    });
-    setRoutes(migratedRoutes);
+      if (error) throw error;
+      if (!data) {
+        alert('Play not found');
+        return;
+      }
 
-    if (playData.ballSequence) {
-      setBallSequence(playData.ballSequence);
-    } else if (playData.ballRoute) {
-      const route = playData.ballRoute;
-      const length = calculateRouteLength(route);
-      const duration = calculateRouteDuration(length);
+      setPlayName(data.name);
 
-      setBallSequence([{
-        ...route,
-        length,
-        duration,
-        segmentIndex: 0,
-        startFrame: 0,
-        endFrame: duration,
-        targetPlayerId: null
-      }]);
-    } else {
-      setBallSequence([]);
+      const migratedRoutes = (data.routes || []).map(route => {
+        if (route.duration) return route;
+        const length = calculateRouteLength(route);
+        const duration = calculateRouteDuration(length);
+        return { ...route, length, duration };
+      });
+      setRoutes(migratedRoutes);
+
+      if (data.ball_sequence) {
+        setBallSequence(data.ball_sequence);
+      } else {
+        setBallSequence([]);
+      }
+
+      setPlayers(data.players);
+      setBall(data.ball || { x: 300, y: 750, startX: 300, startY: 750 });
+      setFormation(data.formation);
+      setOffsideLine(data.offside_line || 750);
+      setFrame(0);
+      setBallMoved(false);
+      setIsPlaying(false);
+      alert('Play loaded');
+    } catch (error) {
+      alert('Error loading play: ' + error.message);
     }
-
-    setPlayers(playData.players);
-    setBall(playData.ball || { x: 300, y: 750, startX: 300, startY: 750 });
-    setFormation(playData.formation);
-    setOffsideLine(playData.offsideLine || 750);
-    setFrame(0);
-    setBallMoved(false);
-    setIsPlaying(false);
-    alert('Play loaded');
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-4">Rugby Play Designer</h1>
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-3xl font-bold">Rugby Play Designer</h1>
+          <div className="flex gap-2 items-center">
+            {user ? (
+              <>
+                <span className="text-sm text-gray-400">{user.email}</span>
+                <button
+                  onClick={handleSignOut}
+                  className="bg-red-600 px-3 py-2 rounded hover:bg-red-700 flex items-center gap-2"
+                >
+                  <LogOut size={18} /> Sign Out
+                </button>
+              </>
+            ) : (
+              <>
+                {!isSignUp && (
+                  <>
+                    <input
+                      type="email"
+                      placeholder="Email"
+                      value={authEmail}
+                      onChange={(e) => setAuthEmail(e.target.value)}
+                      className="bg-gray-800 text-white px-3 py-2 rounded text-sm"
+                    />
+                    <input
+                      type="password"
+                      placeholder="Password"
+                      value={authPassword}
+                      onChange={(e) => setAuthPassword(e.target.value)}
+                      className="bg-gray-800 text-white px-3 py-2 rounded text-sm"
+                    />
+                    <button
+                      onClick={handleSignIn}
+                      disabled={authLoading}
+                      className="bg-blue-600 px-3 py-2 rounded hover:bg-blue-700 text-sm font-medium flex items-center gap-2"
+                    >
+                      <LogIn size={18} /> Sign In
+                    </button>
+                    <button
+                      onClick={() => setIsSignUp(true)}
+                      className="text-sm text-gray-400 hover:text-gray-300"
+                    >
+                      Sign Up
+                    </button>
+                  </>
+                )}
+                {isSignUp && (
+                  <>
+                    <input
+                      type="email"
+                      placeholder="Email"
+                      value={authEmail}
+                      onChange={(e) => setAuthEmail(e.target.value)}
+                      className="bg-gray-800 text-white px-3 py-2 rounded text-sm"
+                    />
+                    <input
+                      type="password"
+                      placeholder="Password"
+                      value={authPassword}
+                      onChange={(e) => setAuthPassword(e.target.value)}
+                      className="bg-gray-800 text-white px-3 py-2 rounded text-sm"
+                    />
+                    <button
+                      onClick={handleSignUp}
+                      disabled={authLoading}
+                      className="bg-green-600 px-3 py-2 rounded hover:bg-green-700 text-sm font-medium"
+                    >
+                      Create Account
+                    </button>
+                    <button
+                      onClick={() => setIsSignUp(false)}
+                      className="text-sm text-gray-400 hover:text-gray-300"
+                    >
+                      Back to Sign In
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        </div>
 
         <div className="mb-4 flex gap-4 items-center flex-wrap">
           <select
@@ -1195,30 +1381,55 @@ function App() {
               className="bg-gray-800 rounded-lg shadow-xl border-2 border-yellow-500 p-2 flex gap-2"
               onMouseDown={(e) => e.stopPropagation()}
             >
-              <button
-                onClick={() => handlePopupRouteSelection('straight')}
-                className="bg-blue-600 px-3 py-2 rounded hover:bg-blue-700 text-sm font-medium"
-              >
-                Straight
-              </button>
-              <button
-                onClick={() => handlePopupRouteSelection('post')}
-                className="bg-blue-600 px-3 py-2 rounded hover:bg-blue-700 text-sm font-medium"
-              >
-                Post
-              </button>
-              <button
-                onClick={() => handlePopupRouteSelection('arc')}
-                className="bg-blue-600 px-3 py-2 rounded hover:bg-blue-700 text-sm font-medium"
-              >
-                Arc
-              </button>
-              <button
-                onClick={closePopupMenu}
-                className="bg-gray-600 px-3 py-2 rounded hover:bg-gray-700 text-sm font-medium"
-              >
-                Cancel
-              </button>
+              {!showPostAngleMenu ? (
+                <>
+                  <button
+                    onClick={() => handlePopupRouteSelection('straight')}
+                    className="bg-blue-600 px-3 py-2 rounded hover:bg-blue-700 text-sm font-medium"
+                  >
+                    Straight
+                  </button>
+                  <button
+                    onClick={() => handlePopupRouteSelection('post')}
+                    className="bg-blue-600 px-3 py-2 rounded hover:bg-blue-700 text-sm font-medium"
+                  >
+                    Post
+                  </button>
+                  <button
+                    onClick={() => handlePopupRouteSelection('arc')}
+                    className="bg-blue-600 px-3 py-2 rounded hover:bg-blue-700 text-sm font-medium"
+                  >
+                    Arc
+                  </button>
+                  <button
+                    onClick={closePopupMenu}
+                    className="bg-gray-600 px-3 py-2 rounded hover:bg-gray-700 text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => handlePostAngleSelection(-1)}
+                    className="bg-green-600 px-3 py-2 rounded hover:bg-green-700 text-sm font-medium"
+                  >
+                    Post Left
+                  </button>
+                  <button
+                    onClick={() => handlePostAngleSelection(1)}
+                    className="bg-green-600 px-3 py-2 rounded hover:bg-green-700 text-sm font-medium"
+                  >
+                    Post Right
+                  </button>
+                  <button
+                    onClick={() => setShowPostAngleMenu(false)}
+                    className="bg-gray-600 px-3 py-2 rounded hover:bg-gray-700 text-sm font-medium"
+                  >
+                    Back
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
