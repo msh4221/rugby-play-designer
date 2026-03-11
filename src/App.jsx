@@ -94,6 +94,23 @@ const FORMATIONS = {
       // Fullback sweeper
       { n: 15, x: 400, y: 248 }
     ]
+  },
+  sevens: {
+    teamA: [
+      // Left pod (3 players): #1, #2, #3
+      { n: 1, x: 200, y: 340 }, { n: 2, x: 160, y: 360 }, { n: 3, x: 240, y: 360 },
+      // Center player: #9 (scrum-half)
+      { n: 9, x: 400, y: 380 },
+      // Right pod (3 players): #4, #5, #6
+      { n: 4, x: 600, y: 340 }, { n: 5, x: 560, y: 360 }, { n: 6, x: 640, y: 360 }
+    ],
+    teamB: [
+      // Defensive line (6 players) spread across field
+      { n: 1, x: 150, y: 300 }, { n: 2, x: 270, y: 300 }, { n: 3, x: 390, y: 300 },
+      { n: 4, x: 510, y: 300 }, { n: 5, x: 630, y: 300 }, { n: 6, x: 750, y: 300 },
+      // Sweeper/Fullback (7th player)
+      { n: 15, x: 400, y: 220 }
+    ]
   }
 };
 
@@ -1277,6 +1294,7 @@ function App() {
             <option value="lineoutLeft">Lineout (Left)</option>
             <option value="lineoutRight">Lineout (Right)</option>
             <option value="freePlay">Free Play</option>
+            <option value="sevens">Sevens</option>
           </select>
 
           {ballSequence.length > 0 && !isBallPassingMode && (
@@ -1354,6 +1372,7 @@ function App() {
           {formation === 'lineoutLeft' && 'Lineout - Left Sideline Throw'}
           {formation === 'lineoutRight' && 'Lineout - Right Sideline Throw'}
           {formation === 'freePlay' && 'Free Play (Post-Ruck)'}
+          {formation === 'sevens' && 'Sevens (Two Pods + Center)'}
         </div>
 
         <div className="relative w-full flex justify-center">
