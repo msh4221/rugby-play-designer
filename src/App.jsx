@@ -132,8 +132,11 @@ function App() {
   const [selectedBall, setSelectedBall] = useState(false);
   const [routeType, setRouteType] = useState(null);
   const [isBallPassingMode, setIsBallPassingMode] = useState(false);
-  const [ballSequenceBuilder, setBallSequenceBuilder] = useState([]);
+  const [ballSequenceBuilder, setBallSequenceBuilder] = useState([]); // List of player IDs in pass order
   const [lastBallPosition, setLastBallPosition] = useState(null);
+  const [ballStartingPlayer, setBallStartingPlayer] = useState(null);
+  const [ballCatchPauseFrames] = useState(12); // 10-15 frames ball pauses at each receiver
+  const [editorMode, setEditorMode] = useState('positioning'); // 'positioning' or 'ball'
   const [drawStart, setDrawStart] = useState(null);
   const [drawEnd, setDrawEnd] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -226,41 +229,62 @@ function App() {
   }
 
   const finalizeBallSequence = React.useCallback(() => {
-    if (ballSequenceBuilder.length === 0) {
+    if (ballSequenceBuilder.length < 2) {
       setIsBallPassingMode(false);
       setSelectedBall(false);
       setLastBallPosition(null);
       return;
     }
 
+    // Build pass segments from player sequence
     let cumulativeFrame = 0;
-    const finalizedSequence = ballSequenceBuilder.map((segment, index) => {
-      const startFrame = cumulativeFrame;
-      const endFrame = startFrame + segment.duration;
-      cumulativeFrame = endFrame;
+    const finalizedSequence = [];
 
-      return {
-        ...segment,
-        segmentIndex: index,
+    for (let i = 0; i < ballSequenceBuilder.length - 1; i++) {
+      const passerPlayerId = ballSequenceBuilder[i];
+      const receiverPlayerId = ballSequenceBuilder[i + 1];
+
+      const passerPlayer = players.find(p => p.id === passerPlayerId);
+      const receiverPlayer = players.find(p => p.id === receiverPlayerId);
+
+      if (!passerPlayer || !receiverPlayer) continue;
+
+      // Calculate pass distance and duration
+      const distance = Math.hypot(
+        receiverPlayer.startX - passerPlayer.startX,
+        receiverPlayer.startY - passerPlayer.startY
+      );
+      const duration = Math.ceil(distance / 5); // Realistic pass speed
+
+      const startFrame = cumulativeFrame;
+      const endFrame = startFrame + duration;
+      const arrivalFrame = endFrame;
+      const releaseFrame = arrivalFrame + ballCatchPauseFrames;
+      cumulativeFrame = releaseFrame;
+
+      finalizedSequence.push({
+        segmentIndex: i,
+        passerPlayerId,
+        receiverPlayerId,
+        passerStartX: passerPlayer.startX,
+        passerStartY: passerPlayer.startY,
+        receiverStartX: receiverPlayer.startX,
+        receiverStartY: receiverPlayer.startY,
         startFrame,
-        endFrame
-      };
-    });
+        endFrame,
+        arrivalFrame,
+        releaseFrame,
+        duration
+      });
+    }
 
     setBallSequence(finalizedSequence);
     setBallSequenceBuilder([]);
     setIsBallPassingMode(false);
     setSelectedBall(false);
     setLastBallPosition(null);
-
-    // Update ball's start position to first player in sequence
-    const firstSegment = finalizedSequence[0];
-    setBall(prev => ({
-      ...prev,
-      startX: firstSegment.startX,
-      startY: firstSegment.startY
-    }));
-  }, [ballSequenceBuilder]);
+    setBallStartingPlayer(null);
+  }, [ballSequenceBuilder, players, ballCatchPauseFrames]);
 
   function initPlayers(formationType) {
     const f = FORMATIONS[formationType];
@@ -358,20 +382,68 @@ function App() {
   useEffect(() => {
     if (frame > 0 && isPlaying) {
       if (ballSequence.length > 0) {
-        const ballFrame = Math.min(frame * BALL_SPEED_MULTIPLIER,
-                                   ballSequence[ballSequence.length - 1].endFrame);
+        const currentFrame = frame * BALL_SPEED_MULTIPLIER;
+        const lastSegment = ballSequence[ballSequence.length - 1];
+        const finalFrame = lastSegment.releaseFrame;
 
+        // Find which segment the ball is in
         const activeSegment = ballSequence.find(seg =>
-          ballFrame >= seg.startFrame && ballFrame < seg.endFrame
+          currentFrame >= seg.startFrame && currentFrame <= seg.releaseFrame
         );
 
         if (activeSegment) {
-          const segmentFrame = ballFrame - activeSegment.startFrame;
-          const ballPos = getPositionAtFrame(activeSegment, segmentFrame, true);
-          setBall(prev => ({ ...prev, x: ballPos.x, y: ballPos.y }));
-        } else if (ballFrame >= ballSequence[ballSequence.length - 1].endFrame) {
-          const lastSeg = ballSequence[ballSequence.length - 1];
-          setBall(prev => ({ ...prev, x: lastSeg.endX, y: lastSeg.endY }));
+          const segmentFrame = currentFrame - activeSegment.startFrame;
+
+          // During flight phase (before arrival)
+          if (segmentFrame < activeSegment.duration) {
+            // Get current position of passer
+            const passerRoute = routes.find(r => r.playerId === activeSegment.passerPlayerId);
+            let passerPos = { x: activeSegment.passerStartX, y: activeSegment.passerStartY };
+            if (passerRoute && passerRoute.duration > 0) {
+              const posAtFrame = getPositionAtFrame(passerRoute, Math.min(segmentFrame, passerRoute.duration), false);
+              passerPos = posAtFrame;
+            }
+
+            // Get receiver position
+            const receiverRoute = routes.find(r => r.playerId === activeSegment.receiverPlayerId);
+            let receiverPos = { x: activeSegment.receiverStartX, y: activeSegment.receiverStartY };
+            if (receiverRoute && receiverRoute.duration > 0) {
+              const receiverSegmentFrame = Math.max(0, segmentFrame - (activeSegment.arrivalFrame - activeSegment.startFrame));
+              const posAtFrame = getPositionAtFrame(receiverRoute, Math.min(receiverSegmentFrame, receiverRoute.duration), false);
+              receiverPos = posAtFrame;
+            }
+
+            // Interpolate ball position from passer to receiver
+            const t = segmentFrame / activeSegment.duration;
+            const ballX = passerPos.x + (receiverPos.x - passerPos.x) * t;
+            const ballY = passerPos.y + (receiverPos.y - passerPos.y) * t;
+            setBall(prev => ({ ...prev, x: ballX, y: ballY }));
+          }
+          // During hold phase (at receiver)
+          else if (segmentFrame <= activeSegment.duration + ballCatchPauseFrames) {
+            // Ball at receiver position
+            const receiverRoute = routes.find(r => r.playerId === activeSegment.receiverPlayerId);
+            const holdFrame = segmentFrame - activeSegment.duration;
+
+            if (receiverRoute && receiverRoute.duration > 0) {
+              const receiverSegmentFrame = Math.max(0, activeSegment.arrivalFrame - activeSegment.startFrame + holdFrame);
+              const posAtFrame = getPositionAtFrame(receiverRoute, Math.min(receiverSegmentFrame, receiverRoute.duration), false);
+              setBall(prev => ({ ...prev, x: posAtFrame.x, y: posAtFrame.y }));
+            } else {
+              setBall(prev => ({ ...prev, x: activeSegment.receiverStartX, y: activeSegment.receiverStartY }));
+            }
+          }
+        } else if (currentFrame > finalFrame) {
+          // Animation complete - ball at last receiver
+          const lastSegment = ballSequence[ballSequence.length - 1];
+          const lastRoute = routes.find(r => r.playerId === lastSegment.receiverPlayerId);
+
+          if (lastRoute && lastRoute.duration > 0) {
+            const posAtFrame = getPositionAtFrame(lastRoute, lastRoute.duration, false);
+            setBall(prev => ({ ...prev, x: posAtFrame.x, y: posAtFrame.y }));
+          } else {
+            setBall(prev => ({ ...prev, x: lastSegment.receiverStartX, y: lastSegment.receiverStartY }));
+          }
         }
 
         if (!ballMoved && frame > 2) {
@@ -520,52 +592,53 @@ function App() {
     if (ballSequence.length === 0) return;
 
     ctx.strokeStyle = '#d4a574';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2;
     ctx.setLineDash([5, 5]);
 
     ballSequence.forEach(segment => {
       ctx.beginPath();
-      ctx.moveTo(segment.startX, segment.startY);
-      ctx.lineTo(segment.endX, segment.endY);
+      ctx.moveTo(segment.passerStartX, segment.passerStartY);
+      ctx.lineTo(segment.receiverStartX, segment.receiverStartY);
       ctx.stroke();
-
-      ctx.fillStyle = '#d4a574';
-      ctx.beginPath();
-      ctx.arc(segment.endX, segment.endY, 4, 0, Math.PI * 2);
-      ctx.fill();
     });
 
     ctx.setLineDash([]);
+
+    // Draw player numbers on the line to show sequence
+    ballSequence.forEach((segment, idx) => {
+      const midX = (segment.passerStartX + segment.receiverStartX) / 2;
+      const midY = (segment.passerStartY + segment.receiverStartY) / 2;
+
+      ctx.fillStyle = '#d4a574';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${idx + 1}`, midX, midY);
+    });
   }
 
   function drawBallSequenceBuilder(ctx) {
-    if (!isBallPassingMode || ballSequenceBuilder.length === 0) return;
+    if (!isBallPassingMode || ballSequenceBuilder.length < 2) return;
 
     ctx.strokeStyle = '#fbbf24';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2;
     ctx.setLineDash([5, 5]);
 
-    ballSequenceBuilder.forEach((segment, index) => {
-      ctx.strokeStyle = index === ballSequenceBuilder.length - 1 ? '#fbbf24' : '#d4a574';
-      ctx.beginPath();
-      ctx.moveTo(segment.startX, segment.startY);
-      ctx.lineTo(segment.endX, segment.endY);
-      ctx.stroke();
-    });
+    // Draw lines between players in sequence
+    for (let i = 0; i < ballSequenceBuilder.length - 1; i++) {
+      const passerPlayer = players.find(p => p.id === ballSequenceBuilder[i]);
+      const receiverPlayer = players.find(p => p.id === ballSequenceBuilder[i + 1]);
+
+      if (passerPlayer && receiverPlayer) {
+        ctx.beginPath();
+        ctx.moveTo(passerPlayer.x, passerPlayer.y);
+        ctx.lineTo(receiverPlayer.x, receiverPlayer.y);
+        ctx.strokeStyle = i === ballSequenceBuilder.length - 2 ? '#fbbf24' : '#d4a574';
+        ctx.stroke();
+      }
+    }
 
     ctx.setLineDash([]);
-
-    if (lastBallPosition) {
-      ctx.fillStyle = '#8b4513';
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(lastBallPosition.x, lastBallPosition.y, BALL_RADIUS + 3, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(lastBallPosition.x, lastBallPosition.y, BALL_RADIUS, 0, Math.PI * 2);
-      ctx.fill();
-    }
   }
 
   function drawSingleRoute(ctx, route) {
@@ -778,16 +851,15 @@ function App() {
       return;
     }
 
-    // Priority 2: Ball selection
+    // Priority 2: Ball selection (only in ball mode)
     const clickedBall = Math.hypot(ball.x - x, ball.y - y) < BALL_RADIUS + 5;
-    if (clickedBall) {
+    if (clickedBall && editorMode === 'ball') {
       if (!isBallPassingMode) {
         setIsBallPassingMode(true);
         setSelectedBall(true);
         setSelectedPlayer(null);
         setSelectedPlayers([]);
-        setLastBallPosition(null);
-        setBallSequenceBuilder([]);
+        return;
       } else {
         finalizeBallSequence();
       }
@@ -800,80 +872,73 @@ function App() {
     );
 
     if (clicked) {
-      // Ball passing mode: add pass to player
-      if (isBallPassingMode) {
-        // First player click: just set the starting point
-        if (lastBallPosition === null) {
-          setLastBallPosition({ x: clicked.x, y: clicked.y });
+      // Ball mode: set starting player or add receiver
+      if (editorMode === 'ball' && isBallPassingMode) {
+        // First click: set starting player
+        if (ballStartingPlayer === null) {
+          setBallStartingPlayer(clicked.id);
+          setBallSequenceBuilder([clicked.id]);
+          setSelectedPlayer(clicked.id);
           return;
         }
 
-        // Subsequent clicks: create pass segments
-        const newSegment = {
-          type: 'straight',
-          startX: lastBallPosition.x,
-          startY: lastBallPosition.y,
-          endX: clicked.x,
-          endY: clicked.y,
-          targetPlayerId: clicked.id
-        };
-
-        const length = calculateRouteLength(newSegment);
-        const duration = calculateRouteDuration(length);
-        newSegment.length = length;
-        newSegment.duration = duration;
-
-        setBallSequenceBuilder([...ballSequenceBuilder, newSegment]);
-        setLastBallPosition({ x: clicked.x, y: clicked.y });
+        // Subsequent clicks: add receivers to sequence
+        setBallSequenceBuilder([...ballSequenceBuilder, clicked.id]);
+        setSelectedPlayer(clicked.id);
         return;
       }
 
-      const now = Date.now();
-      const timeDiff = now - lastClickTime;
+      // Positioning mode: player manipulation
+      if (editorMode === 'positioning') {
+        const now = Date.now();
+        const timeDiff = now - lastClickTime;
 
-      // Check for double-click
-      if (lastClickedPlayer === clicked.id && timeDiff < DOUBLE_CLICK_THRESHOLD) {
-        // DOUBLE-CLICK - show popup menu
-        setPopupMenu({
-          playerId: clicked.id,
-          x: clicked.x,
-          y: clicked.y
-        });
+        // Check for double-click
+        if (lastClickedPlayer === clicked.id && timeDiff < DOUBLE_CLICK_THRESHOLD) {
+          setPopupMenu({
+            playerId: clicked.id,
+            x: clicked.x,
+            y: clicked.y
+          });
+          setSelectedPlayer(clicked.id);
+          setSelectedBall(false);
+          setSelectedPlayers([]);
+          setLastClickedPlayer(null);
+          setLastClickTime(0);
+          return;
+        }
+
+        setLastClickTime(now);
+        setLastClickedPlayer(clicked.id);
+
+        // Case A: Group drag
+        if (selectedPlayers.includes(clicked.id)) {
+          setIsGroupDragging(true);
+          setGroupDragStart({ x, y });
+          return;
+        }
+
+        // Case B: Single player drag
+        setIsDragging(true);
+        setDraggedPlayer(clicked.id);
         setSelectedPlayer(clicked.id);
         setSelectedBall(false);
         setSelectedPlayers([]);
-        setLastClickedPlayer(null);
-        setLastClickTime(0);
         return;
       }
 
-      // FIRST CLICK - record time
-      setLastClickTime(now);
-      setLastClickedPlayer(clicked.id);
-
-      // Case A: Clicked on a player in the selected group - start group drag
-      if (selectedPlayers.includes(clicked.id)) {
-        setIsGroupDragging(true);
-        setGroupDragStart({ x, y });
-        return;
-      }
-
-      // Case B: Single player drag - clear group selection
-      setIsDragging(true);
-      setDraggedPlayer(clicked.id);
-      setSelectedPlayer(clicked.id);
-      setSelectedBall(false);
-      setSelectedPlayers([]);
       return;
     }
 
-    // Priority 4: Empty space - start lasso
-    setIsLassoing(true);
-    setLassoStart({ x, y });
-    setLassoEnd({ x, y });
-    setSelectedPlayer(null);
-    setSelectedBall(false);
-    setSelectedPlayers([]);
+    // Priority 4: Empty space - start lasso (positioning mode only)
+    if (editorMode === 'positioning') {
+      setIsLassoing(true);
+      setLassoStart({ x, y });
+      setLassoEnd({ x, y });
+      setSelectedPlayer(null);
+      setSelectedBall(false);
+      setSelectedPlayers([]);
+    }
   }
 
   function handleCanvasMouseMove(e) {
@@ -1110,6 +1175,7 @@ function App() {
     setIsBallPassingMode(false);
     setBallSequenceBuilder([]);
     setLastBallPosition(null);
+    setBallStartingPlayer(null);
   }
 
   async function savePlay() {
@@ -1366,13 +1432,46 @@ function App() {
           </button>
         </div>
 
-        <div className="mb-2 text-sm text-gray-400">
-          <span className="font-semibold">Formation: </span>
-          {formation === 'scrum' && 'Scrum (Set Piece)'}
-          {formation === 'lineoutLeft' && 'Lineout - Left Sideline Throw'}
-          {formation === 'lineoutRight' && 'Lineout - Right Sideline Throw'}
-          {formation === 'freePlay' && 'Free Play (Post-Ruck)'}
-          {formation === 'sevens' && 'Sevens (Two Pods + Center)'}
+        <div className="mb-4 flex gap-4 items-center">
+          <div className="text-sm text-gray-400">
+            <span className="font-semibold">Formation: </span>
+            {formation === 'scrum' && 'Scrum (Set Piece)'}
+            {formation === 'lineoutLeft' && 'Lineout - Left Sideline Throw'}
+            {formation === 'lineoutRight' && 'Lineout - Right Sideline Throw'}
+            {formation === 'freePlay' && 'Free Play (Post-Ruck)'}
+            {formation === 'sevens' && 'Sevens (Two Pods + Center)'}
+          </div>
+
+          <div className="border-l border-gray-600 pl-4">
+            <div className="text-sm font-semibold mb-2">Editor Mode:</div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setEditorMode('positioning')}
+                className={`px-4 py-2 rounded font-medium ${
+                  editorMode === 'positioning'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                Player Positioning
+              </button>
+              <button
+                onClick={() => {
+                  setEditorMode('ball');
+                  setIsBallPassingMode(false);
+                  setBallStartingPlayer(null);
+                  setBallSequenceBuilder([]);
+                }}
+                className={`px-4 py-2 rounded font-medium ${
+                  editorMode === 'ball'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                Ball Assignment
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="relative w-full flex justify-center">
@@ -1453,15 +1552,27 @@ function App() {
           )}
         </div>
 
-        {isBallPassingMode && (
-          <div className="mt-2 mb-2 p-3 bg-yellow-600 rounded text-white font-semibold">
-            Ball Passing Mode Active
-            {ballSequenceBuilder.length > 0 && (
-              <span> - {ballSequenceBuilder.length} pass(es) added</span>
+        {isBallPassingMode && editorMode === 'ball' && (
+          <div className="mt-2 mb-2 p-3 bg-green-600 rounded text-white font-semibold">
+            {ballStartingPlayer === null ? (
+              <>
+                <div>Click a player to set who starts with the ball</div>
+              </>
+            ) : (
+              <>
+                <div>Ball Assignment Active</div>
+                <div className="text-sm">Starting player: #{players.find(p => p.id === ballStartingPlayer)?.number}</div>
+                {ballSequenceBuilder.length > 1 && (
+                  <div className="text-sm">Pass sequence: {ballSequenceBuilder.map((id) => {
+                    const player = players.find(p => p.id === id);
+                    return `#${player?.number}`;
+                  }).join(' → ')}</div>
+                )}
+                <span className="block text-sm mt-1">
+                  Click players in order to build pass sequence | ESC to finish
+                </span>
+              </>
             )}
-            <span className="block text-sm mt-1">
-              Click players to add passes | Right-click or ESC to finish
-            </span>
           </div>
         )}
 
